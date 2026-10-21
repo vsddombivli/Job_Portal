@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CV Screening Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f2f5f7;--surface:#fff;--ink:#14232e;--muted:#5d6f7c;--line:#d5dce2;--accent:#0f766e;--accent-ink:#fff;--chip:#e0f0ee;--danger:#b42318;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10181e;--surface:#18232b;--ink:#e6edf1;--muted:#93a4b0;--line:#2c3b46;--accent:#2fb5a8;--accent-ink:#06201d;--chip:#1c3a38;--danger:#f97066;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10181e;--surface:#18232b;--ink:#e6edf1;--muted:#93a4b0;--line:#2c3b46;--accent:#2fb5a8;--accent-ink:#06201d;--chip:#1c3a38;--danger:#f97066;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:26px;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 20px}
+.drop{border:2px dashed var(--line);background:var(--surface);border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop.over,.drop:hover,.drop:focus-visible{border-color:var(--accent);background:var(--chip);outline:none}
+.drop b{display:block;font-size:17px;margin-bottom:2px}
+.drop span{color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}
+input[type=text],input[type=search]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grow{flex:1 1 220px}
+button{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.status{color:var(--muted);font-size:14px;min-height:21px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 16px}
+.chip{background:var(--chip);color:var(--ink);border:1px solid transparent;border-radius:999px;padding:3px 10px;font-size:13px;cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-ink)}
+.chip small{opacity:.7;margin-left:4px}
+.wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:14px}
+th{font-weight:600;color:var(--muted);background:var(--bg);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td .tag{display:inline-block;background:var(--chip);border-radius:4px;padding:1px 7px;margin:0 4px 4px 0;font-size:12.5px}
+td .kw{color:var(--muted);font-size:13px}
+.x{border:0;background:none;color:var(--danger);padding:2px 6px}
+.empty{padding:32px;text-align:center;color:var(--muted)}
+.note{color:var(--muted);font-size:13px;margin-top:14px}
+.form{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin-top:16px}
+.form h2{font-size:18px;margin:0 0 2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:14px 0}
+.grid label{display:flex;flex-direction:column;gap:4px;font-weight:500;font-size:14px}
+.grid label small{font-weight:400;color:var(--muted)}
+.grid input{width:100%}
+.full{grid-column:1/-1}
+.job{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:8px 0;cursor:pointer;font-weight:400}
+.job input{margin-top:4px;width:auto}
+.ap{font:inherit;font-weight:600;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:6px;padding:6px 16px;cursor:pointer;flex:none}
+.ap.on{background:var(--accent);color:var(--accent-ink)}
+.pct{font-weight:600;color:var(--accent);margin-left:6px;font-size:14px}
+.err{color:var(--danger);font-size:14px;min-height:20px}
+</style>
+</head>
+<body>
+<main>
+  <h1>CV Screening Portal</h1>
+  <p class="sub" id="sub">Upload your CV, check the details we read from it, answer a few questions and submit.</p>
+
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload CV files">
+    <b>Drop your CV here or click to choose</b>
+    <span>PDF, Word (.docx) or text file.</span>
+    <input type="file" id="file" accept=".pdf,.docx,.txt" hidden>
+  </div>
+  <div class="status" id="status" role="status"></div>
+  <div class="note" id="mine"></div>
+
+  <div class="form" id="form" hidden>
+    <h2>A few questions</h2>
+    <p class="sub" style="margin:0">Answer these and submit. We read your name, email and skills from the CV.</p>
+    <div class="grid">
+      <label style="display:none">Full name<input type="text" id="f_name" autocomplete="name"></label>
+      <label style="display:none">Email<input type="text" id="f_email" autocomplete="email" inputmode="email"></label>
+      <label>Mobile number<small>10 digits.</small><input type="text" id="f_phone" autocomplete="tel" inputmode="tel"></label>
+      <label style="display:none">Total experience (years)<input type="text" id="f_exp" inputmode="decimal"></label>
+      <label class="full" style="display:none">Skills from your CV<small>Separate with commas. Add or remove as needed.</small><input type="text" id="f_skills"></label>
+      <label>Current CTC<small>For example 6 LPA</small><input type="text" id="f_cur"></label>
+      <label>Expected CTC<small>For example 8 LPA</small><input type="text" id="f_exp_ctc"></label>
+      <label>Preferred job location<input type="text" id="f_loc"></label>
+      <label>Age<input type="text" id="f_age" inputmode="numeric"></label>
+    </div>
+    <div style="margin-bottom:12px"><b>Skills found in your CV</b><div class="chips" id="myskills" style="margin:6px 0 0"></div></div>
+    <div style="margin-bottom:14px"><b>Job openings for you</b><div class="kw" style="font-size:13px;color:var(--muted)">Best matches first. Press Apply on the jobs you want, then submit below.</div><div id="joblist"></div></div>
+    <div class="err" id="err" role="alert"></div>
+    <div class="row" style="margin:0"><button class="primary" id="submit">Submit application</button><button id="cancel">Start over</button></div>
+  </div>
+
+  <p class="note"><button id="adminLink" class="x" style="color:var(--muted)">Admin login</button></p>
+  <div class="form" id="login" hidden><h2>Admin login</h2><div class="grid"><label>Admin mobile number<input type="text" id="a_mob" inputmode="numeric"></label></div><div class="err" id="a_err" role="alert"></div><button class="primary" id="a_go">Log in</button></div>
+
+  <section id="admin" hidden>
+    <h2 style="font-size:20px;margin:28px 0 4px">Job openings</h2>
+    <p class="sub">Candidates see these after uploading their CV, ranked by how many required skills match.</p>
+    <div class="row" style="margin-top:0">
+      <button id="j_import">Import jobs from Excel or CSV</button>
+      <button id="j_tpl">Download template</button>
+      <button id="j_jd">Fill from a job description file</button>
+      <input type="file" id="j_file" accept=".xlsx,.xls,.csv" hidden>
+      <input type="file" id="j_jdfile" accept=".pdf,.docx,.txt" hidden>
+    </div>
+    <div class="grid">
+      <label>Company<input type="text" id="j_company"></label>
+      <label>Job title<input type="text" id="j_title"></label>
+      <label>Location<input type="text" id="j_loc"></label>
+      <label>Experience<input type="text" id="j_exp" placeholder="2 to 4 years"></label>
+      <label>Salary<input type="text" id="j_sal" placeholder="4 to 6 LPA"></label>
+      <label class="full">Required skills<small>Separate with commas, for example Excel, Tally, GST</small><input type="text" id="j_skills"></label>
+      <label class="full">Details<input type="text" id="j_desc"></label>
+    </div>
+    <div class="err" id="j_err" role="alert"></div>
+    <button class="primary" id="j_add">Post job</button>
+    <div id="adminjobs"></div>
+    <h2 style="font-size:20px;margin:28px 0 4px">Applications received</h2>
+    <p class="sub" id="count"></p>
+    <div class="row">
+      <input type="text" id="extra" class="grow" placeholder="Add your own skills to look for, separated by commas">
+      <button id="addExtra">Save skills</button>
+    </div>
+    <div class="row">
+      <input type="search" id="q" class="grow" placeholder="Search name, skill or keyword">
+      <button class="primary" id="export" disabled>Download Excel</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="wrap" id="wrap"></div>
+    <p class="note">Only the admin sees this list. New CVs appear here as soon as they are uploaded. Custom skills apply to CVs uploaded after you save them.</p>
+  </section>
+</main>
+
+<script>
+(function(){
+var SKILLS={
+"Programming":["JavaScript","TypeScript","Python","Java","C#","C++","PHP","Ruby","Go","Kotlin","Swift","SQL","R","Scala","Dart"],
+"Web":["HTML","CSS","React","Angular","Vue","Node.js","Express","Django","Flask","Spring","Laravel",".NET","jQuery","Bootstrap","Tailwind","REST","GraphQL"],
+"Data":["Excel","Power BI","Tableau","Pandas","NumPy","Machine Learning","Deep Learning","TensorFlow","PyTorch","Data Analysis","Statistics","ETL","Spark","Hadoop"],
+"Database":["MySQL","PostgreSQL","MongoDB","Oracle","SQL Server","Redis","Firebase"],
+"Cloud/DevOps":["AWS","Azure","GCP","Docker","Kubernetes","Jenkins","Git","GitHub","CI/CD","Linux","Terraform"],
+"Business":["Accounting","Tally","GST","SAP","Sales","Marketing","SEO","Recruitment","HR","Payroll","Customer Support","Project Management","Agile","Scrum","Leadership","Communication","Negotiation","MS Office","Business Development","Operations"]
+};
+var STOP=new Set("the and for with that this from have has had are was were been will would could should their there which about into over under such than then them they your you our out not but all any can its also more most other some may per etc use used using work worked working experience years year responsible company role roles team teams project projects skills skill details name email phone address date birth resume curriculum vitae cv objective summary profile education university college school degree good well new one two".split(" "));
+var store=[],extra=[],jobs=[],active=null,db=null,isAdmin=false,mine=[];
+var $=function(i){return document.getElementById(i)};
+try{pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"}catch(e){}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function rx(s){return s.replace(/[.*+?^${}()|[\]\\\/]/g,"\\$&")}
+function allSkills(){var l=[];Object.keys(SKILLS).forEach(function(k){SKILLS[k].forEach(function(s){l.push(s)})});extra.forEach(function(s){l.push(s)});jobs.forEach(function(j){(j.skills||[]).forEach(function(s){l.push(s)})});return l}
+
+async function readFile(f){
+  var n=f.name.toLowerCase();
+  if(n.endsWith(".pdf")){
+    var pdf=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,t="";
+    for(var i=1;i<=pdf.numPages;i++){var pg=await pdf.getPage(i),c=await pg.getTextContent();t+=c.items.map(function(x){return x.str+(x.hasEOL?"\n":" ")}).join("")+"\n"}
+    return t;
+  }
+  if(n.endsWith(".docx")){return (await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value}
+  return await f.text();
+}
+
+function analyse(text,file){
+  var flat=text.replace(/\r/g,"");
+  var lines=flat.split("\n").map(function(l){return l.trim()}).filter(Boolean);
+  var email=(flat.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/)||[""])[0];
+  var phone=(flat.match(/(\+?\d[\d\s\-()]{8,15}\d)/)||[""])[0].trim();
+  var name="";
+  for(var i=0;i<Math.min(lines.length,8);i++){var l=lines[i];if(l.length<45&&!/@|\d|resume|curriculum|vitae/i.test(l)&&l.split(" ").length<=4){name=l;break}}
+  if(!name)name=file.replace(/\.[^.]+$/,"").replace(/[_\-]+/g," ");
+  var yrs=0,m,re=/(\d{1,2}(?:\.\d)?)\+?\s*(?:years?|yrs?)/gi;
+  while((m=re.exec(flat))){var v=parseFloat(m[1]);if(v>yrs&&v<=45)yrs=v}
+  var found=[];
+  allSkills().forEach(function(s){
+    if(new RegExp("(^|[^a-z0-9+#])"+rx(s)+"(?![a-z0-9+#])","i").test(flat)&&found.indexOf(s)<0)found.push(s);
+  });
+  var freq={};
+  (flat.toLowerCase().match(/[a-z][a-z+#.\-]{2,}/g)||[]).forEach(function(w){
+    w=w.replace(/[.\-]+$/,"");if(w.length<3||STOP.has(w))return;freq[w]=(freq[w]||0)+1});
+  var kws=Object.keys(freq).sort(function(a,b){return freq[b]-freq[a]}).filter(function(w){return freq[w]>1}).slice(0,10);
+  return{file:file,name:name,email:email,phone:phone,exp:yrs,skills:found,keywords:kws};
+}
+
+var cur=null;
+function fill(r){
+  $("f_name").value=r.name;$("f_email").value=r.email;$("f_phone").value=r.phone;
+  $("f_exp").value=r.exp||"";$("f_skills").value=r.skills.join(", ");
+  ["f_cur","f_exp_ctc","f_loc","f_age"].forEach(function(i){$(i).value=""});
+  renderJobs(r.skills);$("err").textContent="";$("form").hidden=false;$("form").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function handle(files){
+  var st=$("status"),f=files[0];
+  if(!f)return;
+  if(!db){st.textContent="Uploads are not available in this view. Open the portal link while signed in to Claude.";return}
+  st.textContent="Reading "+f.name+"…";
+  try{
+    var t=await readFile(f);
+    if(!t||t.trim().length<30){st.textContent="Could not read text from "+f.name+". It may be a scanned image PDF. Try a Word or text version.";return}
+    cur=analyse(t,f.name);cur.blob=/\.docx$/i.test(f.name)?new Blob([t],{type:"text/plain"}):f;cur.isText=/\.docx$/i.test(f.name);fill(cur);st.textContent="CV uploaded. Please answer the questions below.";
+  }catch(e){st.textContent="Could not open "+f.name+". Try saving it again as PDF or DOCX."}
+}
+async function submitForm(){
+  var err=$("err"),v=function(i){return $(i).value.trim()};
+  if(!cur){err.textContent="Upload your CV first.";return}
+  if(!v("f_name"))$("f_name").value=cur.file.replace(/\.[^.]+$/,"");
+  
+  var mob=v("f_phone").replace(/\D/g,"").slice(-10);
+  if(mob.length!==10){err.textContent="Enter a valid 10 digit mobile number.";return}
+  var age=parseInt(v("f_age"),10);
+  if(!(age>=16&&age<=75)){err.textContent="Enter your age as a number, for example 28.";return}
+  if(!v("f_cur")||!v("f_exp_ctc")||!v("f_loc")){err.textContent="Fill in current CTC, expected CTC and preferred job location.";return}
+  var rec={file:cur.file,name:v("f_name"),email:v("f_email"),phone:mob,exp:parseFloat(v("f_exp"))||0,
+    skills:v("f_skills").split(",").map(function(x){return x.trim()}).filter(Boolean),keywords:cur.keywords,appliedJobs:Array.from(document.querySelectorAll("#joblist input:checked")).map(function(i){return i.dataset.t}),
+    currentCtc:v("f_cur"),expectedCtc:v("f_exp_ctc"),location:v("f_loc"),age:age,submittedAt:Date.now()};
+  $("submit").disabled=true;err.textContent="";
+  try{
+    try{var A=await claude.use("assets");if(A&&cur.blob){var up=await A.upload(cur.blob);rec.cvId=up.id;if(cur.isText)rec.cvText=true}}catch(x){}
+    await db.collection("cvs").add(rec);
+    $("form").hidden=true;cur=null;
+    $("status").textContent="Application submitted"+(rec.appliedJobs.length?" for "+rec.appliedJobs.length+" job"+(rec.appliedJobs.length>1?"s":""):"")+". Thank you.";
+    $("mine").textContent="To apply with another CV, upload it above.";
+  }catch(e){err.textContent="Could not submit. Check your connection and try again."}
+  $("submit").disabled=false;
+}
+function rows(){
+  var q=$("q").value.trim().toLowerCase();
+  return store.filter(function(r){
+    if(active&&r.skills.indexOf(active)<0)return false;
+    if(!q)return true;
+    return (r.name+" "+r.email+" "+r.skills.join(" ")+" "+r.keywords.join(" ")).toLowerCase().indexOf(q)>=0;
+  });
+}
+
+function render(){
+  if(!isAdmin)return;
+  var t0=new Date();t0.setHours(0,0,0,0);
+  var today=store.filter(function(r){return r.submittedAt>=t0.getTime()}).length;
+  $("count").textContent=store.length+" application"+(store.length===1?"":"s")+" received in total, "+today+" today";
+  var counts={};store.forEach(function(r){r.skills.forEach(function(s){counts[s]=(counts[s]||0)+1})});
+  var top=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a]}).slice(0,20);
+  $("chips").innerHTML=top.map(function(s){return '<button class="chip'+(active===s?' on':'')+'" data-s="'+esc(s)+'">'+esc(s)+'<small>'+counts[s]+'</small></button>'}).join("");
+  var list=rows();
+  $("export").disabled=!store.length;
+  if(!store.length){$("wrap").innerHTML='<div class="empty">No CVs received yet.</div>';return}
+  if(!list.length){$("wrap").innerHTML='<div class="empty">No candidate matches this filter.</div>';return}
+  $("wrap").innerHTML='<table><thead><tr><th>Candidate</th><th>Contact</th><th>Experience</th><th>CTC (current / expected)</th><th>Location, age</th><th>Skills</th><th>Applied for</th><th>Top keywords</th><th></th></tr></thead><tbody>'+
+  list.map(function(r){
+    return '<tr><td><b>'+esc(r.name)+'</b><div class="kw">'+esc(r.file)+'</div>'+(/^[0-9a-f]{32}$/.test(r.cvId||"")?'<a href="/_blob/'+r.cvId+'" target="_blank" rel="noopener">'+(r.cvText?"Open CV (text copy)":"Open CV")+'</a>':'<span class="kw">CV file not saved</span>')+'</td>'+
+    '<td>'+esc(r.email||"—")+'<div class="kw">'+esc(r.phone||"")+'</div></td>'+
+    '<td>'+(r.exp?esc(r.exp)+" yrs":"—")+'</td>'+
+    '<td>'+esc(r.currentCtc||"—")+' / '+esc(r.expectedCtc||"—")+'</td>'+
+    '<td>'+esc(r.location||"—")+'<div class="kw">'+(r.age?"Age "+esc(r.age):"")+'</div></td>'+
+    '<td>'+((r.skills||[]).length?r.skills.map(function(s){return '<span class="tag">'+esc(s)+'</span>'}).join(""):'<span class="kw">None matched</span>')+'</td>'+
+    '<td>'+esc((r.appliedJobs||[]).join(", ")||"—")+'</td>'+
+    '<td class="kw">'+esc((r.keywords||[]).join(", "))+'</td>'+
+    '<td><button class="x" data-id="'+esc(r.id)+'" aria-label="Remove '+esc(r.name)+'">Remove</button></td></tr>'}).join("")+'</tbody></table>';
+}
+
+async function exportXlsx(){
+  var list=rows();
+  var a=list.map(function(r){return{"Candidate":r.name,"Email":r.email,"Phone":r.phone,"Experience (years)":r.exp||"","Current CTC":r.currentCtc||"","Expected CTC":r.expectedCtc||"","Preferred location":r.location||"","Age":r.age||"","Skill count":r.skills.length,"Skills":r.skills.join(", "),"Applied for":(r.appliedJobs||[]).join(", "),"Top keywords":(r.keywords||[]).join(", "),"File":r.file,"Received":new Date(r.submittedAt).toLocaleString()}});
+  var counts={};list.forEach(function(r){r.skills.forEach(function(s){counts[s]=(counts[s]||0)+1})});
+  var b=Object.keys(counts).sort(function(x,y){return counts[y]-counts[x]}).map(function(s){return{"Skill":s,"Candidates":counts[s]}});
+  var wb=XLSX.utils.book_new();
+  var s1=XLSX.utils.json_to_sheet(a);s1["!cols"]=[{wch:24},{wch:28},{wch:16},{wch:12},{wch:14},{wch:14},{wch:20},{wch:6},{wch:10},{wch:60},{wch:30},{wch:40},{wch:28},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,s1,"Candidates");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(b.length?b:[{"Skill":"","Candidates":""}]),"Skill summary");
+  var blob=new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  var d=null;try{d=await claude.use("downloads")}catch(e){}
+  if(!d){$("status").textContent="Download is not available in this view.";return}
+  try{await d.save({filename:"cv-report.xlsx",data:blob})}catch(e){if(e&&e.code!=="declined")$("status").textContent="Download failed. Try again."}
+}
+
+$("drop").addEventListener("click",function(){$("file").click()});
+$("drop").addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();$("file").click()}});
+$("file").addEventListener("change",function(e){handle(e.target.files);e.target.value=""});
+["dragover","dragenter"].forEach(function(t){$("drop").addEventListener(t,function(e){e.preventDefault();$("drop").classList.add("over")})});
+["dragleave","drop"].forEach(function(t){$("drop").addEventListener(t,function(e){e.preventDefault();$("drop").classList.remove("over")})});
+$("drop").addEventListener("drop",function(e){handle(e.dataTransfer.files)});
+$("q").addEventListener("input",render);
+$("chips").addEventListener("click",function(e){var b=e.target.closest(".chip");if(!b)return;active=active===b.dataset.s?null:b.dataset.s;render()});
+$("wrap").addEventListener("click",function(e){var b=e.target.closest(".x");if(!b||!confirm("Remove this candidate from the report?"))return;db.doc("cvs/"+b.dataset.id).delete().catch(function(){$("status").textContent="Could not remove."})});
+$("export").addEventListener("click",exportXlsx);
+$("submit").addEventListener("click",submitForm);
+$("cancel").addEventListener("click",function(){$("form").hidden=true;cur=null;$("status").textContent=""});
+$("addExtra").addEventListener("click",async function(){
+  var v=$("extra").value.split(",").map(function(s){return s.trim()}).filter(Boolean);
+  if(!v.length||!db)return;
+  v.forEach(function(s){if(extra.indexOf(s)<0)extra.push(s)});
+  try{await db.doc("settings/skills").set({list:extra});$("extra").value="";$("status").textContent="Saved. These skills apply to CVs uploaded from now on."}catch(e){$("status").textContent="Could not save skills."}
+});
+
+function renderJobs(skills){
+  var low=skills.map(function(x){return x.toLowerCase()});
+  $("myskills").innerHTML=skills.length?skills.map(function(x){return '<span class="chip" style="cursor:default">'+esc(x)+'</span>'}).join(""):'<span class="kw">No skills detected</span>';
+  if(!jobs.length){$("joblist").innerHTML='<div class="kw" style="color:var(--muted)">No openings are posted right now.</div>';return}
+  var list=jobs.map(function(j){var req=j.skills||[],hit=req.filter(function(x){return low.indexOf(x.toLowerCase())>=0});return{j:j,hit:hit,pct:req.length?Math.round(hit.length/req.length*100):0}}).sort(function(a,b){return b.pct-a.pct});
+  $("joblist").innerHTML=list.map(function(m){var j=m.j;
+    return '<div class="job" style="cursor:default"><input type="checkbox" style="display:none" data-t="'+esc(j.title+(j.company?" - "+j.company:""))+'"><div style="flex:1"><b>'+esc(j.title)+'</b><span class="pct">'+m.pct+'% match</span>'+
+    '<div class="kw" style="color:var(--muted);font-size:13px">'+esc([j.company,j.location,j.exp,j.salary].filter(Boolean).join("  |  "))+'</div>'+
+    (j.desc?'<div style="font-size:14px">'+esc(j.desc)+'</div>':'')+
+    '<div style="margin-top:4px">'+(m.hit.length?m.hit.map(function(x){return '<span class="tag">'+esc(x)+'</span>'}).join(""):'<span class="kw" style="color:var(--muted);font-size:13px">No matching skills yet</span>')+'</div></div><button type="button" class="ap" aria-pressed="false">Apply</button></div>'}).join("");
+}
+function renderAdminJobs(){
+  var el=$("adminjobs");if(!el)return;
+  el.innerHTML=jobs.length?jobs.map(function(j,i){return '<div class="job" style="cursor:default"><div style="flex:1"><b>'+esc(j.title)+'</b><div class="kw" style="color:var(--muted);font-size:13px">'+esc([j.company,j.location,j.exp,j.salary].filter(Boolean).join("  |  "))+'</div><div style="font-size:13px">'+esc((j.skills||[]).join(", "))+'</div></div><button class="x" data-j="'+i+'">Remove</button></div>'}).join(""):'<div class="kw" style="color:var(--muted);margin-top:8px">No openings posted yet.</div>';
+}
+async function saveJobs(){try{await db.doc("settings/jobs").set({list:jobs});return true}catch(e){return false}}
+$("j_add").addEventListener("click",async function(){
+  var g=function(i){return $(i).value.trim()},e=$("j_err");e.textContent="";e.style.color="";
+  if(!g("j_title")||!g("j_skills")){e.textContent="Enter the job title and at least one required skill.";return}
+  jobs.push({id:Date.now().toString(36),company:g("j_company"),title:g("j_title"),location:g("j_loc"),exp:g("j_exp"),salary:g("j_sal"),desc:g("j_desc"),skills:g("j_skills").split(",").map(function(x){return x.trim()}).filter(Boolean)});
+  if(await saveJobs()){["j_company","j_title","j_loc","j_exp","j_sal","j_skills","j_desc"].forEach(function(i){$(i).value=""});renderAdminJobs()}
+  else{jobs.pop();e.textContent="Could not post the job. Try again."}
+});
+$("joblist").addEventListener("click",function(ev){
+  var b=ev.target.closest(".ap");if(!b)return;
+  var c=b.parentNode.querySelector("input"),on=!c.checked;c.checked=on;
+  b.classList.toggle("on",on);b.setAttribute("aria-pressed",on);b.textContent=on?"Applied \u2713":"Apply";
+});
+$("adminjobs").addEventListener("click",async function(ev){
+  var b=ev.target.closest(".x");if(!b||!confirm("Remove this job opening?"))return;
+  var removed=jobs.splice(+b.dataset.j,1);if(!(await saveJobs()))jobs.splice(+b.dataset.j,0,removed[0]);renderAdminJobs();
+});
+function msg(t,ok){var e=$("j_err");e.textContent=t;e.style.color=ok?"var(--accent)":""}
+function norm(o){var r={};Object.keys(o).forEach(function(k){r[k.toLowerCase().replace(/[^a-z]/g,"")]=String(o[k]).trim()});return r}
+$("j_import").addEventListener("click",function(){$("j_file").click()});
+$("j_file").addEventListener("change",async function(ev){
+  var f=ev.target.files[0];ev.target.value="";if(!f)return;
+  try{
+    var wb=XLSX.read(await f.arrayBuffer(),{type:"array"}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}),n=0;
+    rows.forEach(function(o){var r=norm(o),t=r.jobtitle||r.title||r.position;if(!t)return;
+      jobs.push({id:Date.now().toString(36)+n,company:r.company||"",title:t,location:r.location||"",exp:r.experience||"",salary:r.salary||r.ctc||"",desc:r.details||r.description||"",skills:(r.skills||r.requiredskills||"").split(",").map(function(x){return x.trim()}).filter(Boolean)});n++});
+    if(!n){msg("No jobs found. Use the template: one row per job, with a Job title column.");return}
+    if(await saveJobs()){renderAdminJobs();msg(n+" job"+(n>1?"s":"")+" imported.",true)}
+    else{jobs.splice(jobs.length-n,n);msg("Could not save the jobs. Try again.")}
+  }catch(x){msg("Could not read this file. Use .xlsx or .csv.")}
+});
+$("j_tpl").addEventListener("click",async function(){
+  var ws=XLSX.utils.json_to_sheet([{"Company":"ABC Pvt Ltd","Job title":"Accountant","Location":"Mumbai","Experience":"2 to 4 years","Salary":"3 to 4 LPA","Skills":"Tally, GST, Excel","Details":"Handle books and GST filing"}]);
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Jobs");
+  var d=null;try{d=await claude.use("downloads")}catch(x){}
+  if(!d){msg("Download is not available in this view.");return}
+  try{await d.save({filename:"job-openings-template.xlsx",data:new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})])})}catch(x){}
+});
+$("j_jd").addEventListener("click",function(){$("j_jdfile").click()});
+$("j_jdfile").addEventListener("change",async function(ev){
+  var f=ev.target.files[0];ev.target.value="";if(!f)return;
+  try{
+    var t=await readFile(f);if(!t||t.trim().length<30){msg("Could not read text from this file.");return}
+    var lines=t.split("\n").map(function(l){return l.trim()}).filter(Boolean),found=[];
+    allSkills().forEach(function(x){if(new RegExp("(^|[^a-z0-9+#])"+rx(x)+"(?![a-z0-9+#])","i").test(t)&&found.indexOf(x)<0)found.push(x)});
+    $("j_title").value=lines.find(function(l){return l.length<70})||"";
+    $("j_skills").value=found.join(", ");
+    $("j_desc").value=lines.slice(1,4).join(" ").slice(0,300);
+    msg("Filled from the file. Add the company and location, check the rest, then Post job.",true);
+  }catch(x){msg("Could not open this file.")}
+});
+async function sha(t){var b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("cvportal:"+t));return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,"0")}).join("")}
+$("adminLink").addEventListener("click",function(){$("login").hidden=!$("login").hidden});
+$("a_go").addEventListener("click",async function(){
+  var e=$("a_err"),m=$("a_mob").value.replace(/\D/g,"").slice(-10);e.textContent="";
+  if(m.length!==10){e.textContent="Enter your 10 digit mobile number.";return}
+  if(!isAdmin||!db){e.textContent="This number is not authorised.";return}
+  try{
+    var h=await sha(m),d=db.doc("settings/admin"),sn=await d.get();
+    if(!sn.exists){await d.set({h:h})}
+    else if(sn.data().h!==h){e.textContent="This number is not authorised.";return}
+    $("login").hidden=true;$("admin").hidden=false;$("adminLink").hidden=true;
+  }catch(x){e.textContent="Login failed. Try again."}
+});
+async function init(){
+  try{db=await claude.use("db")}catch(e){}
+  if(!db){$("status").textContent="Sign in to Claude and reopen this link to upload a CV.";return}
+  try{var sn=await db.doc("settings/skills").get();if(sn.exists)extra=sn.data().list||[]}catch(e){}
+  try{var sj=await db.doc("settings/jobs").get();if(sj.exists)jobs=sj.data().list||[]}catch(e){}
+  renderAdminJobs();
+  try{var u=await claude.use("user");isAdmin=u?await u.isOwner():false}catch(e){isAdmin=false}
+  if(!isAdmin){[$("admin"),$("login"),$("adminLink").parentNode].forEach(function(n){if(n)n.remove()})}
+  if(isAdmin){
+    
+    
+    
+    if(extra.length)$("extra").value=extra.join(", ");
+    db.collection("cvs").orderBy("submittedAt","desc").onSnapshot(function(s){
+      store=s.docs.map(function(d){var x=d.data();x.id=d.id;return x});render();
+    },function(){$("status").textContent="Could not load candidates."});
+    render();
+  }
+}
+init();
+})();
+</script>
+</body>
+</html>
