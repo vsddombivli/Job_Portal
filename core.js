@@ -13,7 +13,7 @@ export function matchJob(profile,job){
  const skills=terms(profile.skills);const wanted=terms(job.skills);const common=wanted.filter(x=>skills.includes(x));
  const reasons=[];let total=0,available=0;
  const part=(weight,score)=>{available+=weight;total+=weight*score;};
- if(wanted.length){part(40,common.length/wanted.length);if(common.length)reasons.push('skills');}
+ if(wanted.length){const primary=terms(profile.primary_skills!==undefined?profile.primary_skills:profile.skills);part(40,common.reduce((sum,x)=>sum+(primary.includes(x)?2:1),0)/(wanted.length*2));if(common.length)reasons.push('skills');}
  if(profile.roles||profile.employment_type){let n=0,d=0;
   if(profile.roles&&job.category){const role=terms(profile.roles).some(x=>normal(job.category).includes(x)||normal(job.title).includes(x));n+=role?20:0;d+=20;if(role)reasons.push('role');}
   if(profile.employment_type&&job.employment_type){const type=profile.employment_type===job.employment_type;n+=type?5:0;d+=5;if(type)reasons.push('employment type');}
@@ -31,5 +31,8 @@ export function matchJob(profile,job){
 }
 export function isOpen(job,today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())){return job.status==='published'&&(!job.closes_on||job.closes_on>=today);}
 export function completion(p){const keys=['full_name','phone','city','roles','skills','employment_status','experience','cities'];return Math.round(keys.filter(k=>Array.isArray(p[k])?p[k].length:p[k]!==null&&p[k]!==undefined&&p[k]!=='').length/keys.length*100);}
-export function validateProfile(p){if(!String(p.full_name||'').trim())throw Error('Please enter your name.');if(!/^\+?[0-9]{10,15}$/.test(p.phone||''))throw Error('Enter a valid mobile number, including country code if needed.');if(!p.roles?.trim()||!p.skills?.length||!p.cities?.trim())throw Error('Add preferred roles, at least one skill, and preferred locations.');for(const k of ['experience','current_ctc','expected_ctc'])if(p[k]!=null&&(!Number.isFinite(Number(p[k]))||Number(p[k])<0))throw Error('Experience and salary cannot be negative.');}
+export function validateProfile(p){if(!String(p.full_name||'').trim())throw Error('Please enter your name.');if(!/^\+?[0-9]{10,15}$/.test(p.phone||''))throw Error('Enter a valid mobile number, including country code if needed.');if((p.primary_skills||[]).length>20||(p.other_skills||[]).length>30||(p.skills||[]).some(x=>x.length>80))throw Error('Please shorten the skill lists.');if(!p.roles?.trim()||!p.skills?.length||!p.cities?.trim())throw Error('Add preferred roles, at least one skill, and preferred locations.');for(const k of ['experience','current_ctc','expected_ctc'])if(p[k]!=null&&(!Number.isFinite(Number(p[k]))||Number(p[k])<0))throw Error('Experience and salary cannot be negative.');}
 export function validateJob(j){for(const k of ['title','company','city','category','description'])if(!String(j[k]||'').trim())throw Error('Complete all required job fields.');if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(j.recipient_email||''))throw Error('Enter a valid employer email.');if(!j.source_verified)throw Error('Verify the employer before saving.');if(Number(j.experience_min)<0||(j.experience_max!=null&&Number(j.experience_max)<Number(j.experience_min)))throw Error('Check the experience range.');if(j.salary_min!=null&&j.salary_max!=null&&Number(j.salary_min)>Number(j.salary_max))throw Error('Minimum salary cannot exceed maximum salary.');}
+
+export const splitSkills=value=>[...new Map(String(value||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>[normal(x),x])).values()];
+export const mergeSkillLists=(primary=[],other=[])=>[...new Map([...primary,...other].map(x=>[normal(x),x])).values()];
