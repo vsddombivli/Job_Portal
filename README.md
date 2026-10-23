@@ -1,6 +1,6 @@
-# Sadharmik Jobs — v1.1.1
+# VSD Sadharmik Jobs — v1.1.2
 
-A mobile-friendly English/Hindi portal for the Jain community, with admin-created accounts, private CVs, job matching and applications. Email delivery remains disabled by design.
+An employment initiative by Vardhaman Sanskar Dham: a mobile-friendly English/Hindi portal for the Jain community, with admin-created accounts, private CVs, job matching and applications. Email delivery remains disabled by design.
 
 **Already deployed v1? Follow UPGRADE.md. Do not rerun the base migration or replace your working config.js.**
 
@@ -15,6 +15,14 @@ python3 -m http.server 8080
 ```
 
 Open http://localhost:8080. Copy config.example.js to config.js for a new installation. Do not open production index.html directly with file:// because it imports JavaScript modules.
+
+## VSD branding update
+
+Deploy app.js, styles.css and index.html together for the v1.1.2 branding update. Keep your current config.js. No SQL, Edge Function, key, domain or account changes are required. demo.html is also refreshed for review.
+
+The header uses the full organisation name, Vardhaman Sanskar Dham (वर्धमान संस्कार धाम), above Sadharmik Jobs (साधर्मिक रोजगार), with the purpose “Employment support for the Jain community.” The login, job workspace, help page and footer attribute the portal to VSD. Role copy explains that VSD facilitates connections while employers make hiring decisions. Your existing configured coordinator contact remains in use; no phone/email/address is invented.
+
+A simple typographic VSD monogram is a temporary identifier, not an official logo or seal. Replace it with the approved supplied logo in a later update. The responsive header keeps the full name and language control visible on phones. No verification badges, accreditation claims, contact details or success statistics were introduced by this branding update.
 
 ## Features
 
@@ -108,6 +116,11 @@ Run tests/supabase-permissions.sql and tests/upgrade-permissions.sql in SQL Edit
 - No email marked sent; all delivery notices remain accurate.
 
 ## Change history
+
+### 1.1.2 — 23 October 2026
+
+Added Vardhaman Sanskar Dham identity, bilingual organisation/app names and purpose, login attribution and medium-role explanation, branded help/footer, browser title/description and mobile header styling. Used a text monogram pending an approved official logo. No backend/schema changes. The existing 45 mocked automated checks pass; full visual browser review remains pending.
+
 
 ### 1.1.1 — 22 October 2026
 
