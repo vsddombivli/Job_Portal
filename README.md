@@ -1,109 +1,92 @@
-# Sadharmik Jobs
+# Sadharmik Jobs — v1.1.1
 
-A simple English/Hindi job portal for the Jain community. Candidates are approved through admin-created accounts. Employers do not need an account in version 1.
+A mobile-friendly English/Hindi portal for the Jain community, with admin-created accounts, private CVs, job matching and applications. Email delivery remains disabled by design.
 
-## Try it first
+**Already deployed v1? Follow UPGRADE.md. Do not rerun the base migration or replace your working config.js.**
 
-Open **demo.html** in a current browser. It is a self-contained interactive preview with fictional records. Switch between candidate and admin views using the top banner. Demo changes live only in the current tab; refresh resets them. It neither authenticates users nor sends applications to a backend. Do not use personal CVs in a shared demo session.
+## Preview and hosting
 
-For the production frontend, serve this folder rather than opening index.html directly:
+Open `demo.html` for a single-file interactive demo with fictional records. Changes last for the current tab; refresh resets them. Claude calls and password changes are disabled in the demo. Its local CV reader works without AI. Do not use personal documents in a shared demonstration.
+
+The production frontend is plain HTML/CSS/JavaScript, needs no build step and runs on GitHub Pages or another static HTTPS host. Python is only an optional local web server:
 
 ```sh
 python3 -m http.server 8080
 ```
 
-Visit http://localhost:8080. No build step or npm installation is needed. Node 20+ is needed only to run tests.
+Open http://localhost:8080. Copy config.example.js to config.js for a new installation. Do not open production index.html directly with file:// because it imports JavaScript modules.
 
-## Included functionality
+## Features
 
-- Candidate/admin workspaces with English and Hindi labels, responsive layouts, search and filters.
-- Admin-created candidate accounts, eligibility/identity confirmation, mandatory first-login password change, current-password verification, admin-assisted reset, pause/reactivate.
-- Private candidate profiles with mobile number, experience, current/expected annual CTC, preferred roles/cities, joining time, work preferences, private urgent-help flag and consent.
-- Private PDF/DOCX CV storage (2 MB), browser-side text extraction, editable skill suggestions and mobile extraction. Manual profiles work without a CV.
-- Explainable rule-based ranking by skills, role, location, experience and salary. Missing salary does not count as a mismatch. Mandatory skills are checked independently at application time on the server.
-- Verified job creation/editing with draft, published and closed states; closing dates; private employer contact details.
-- Atomic applications with duplicate prevention, profile/job/CV snapshots, candidate withdrawal, admin review/status updates and private CV download links.
-- Email state visibly disabled throughout. Preferences are saved for future use, but no email sending, scheduled alert worker or Resend credentials are included.
-- RLS, column privileges, immutable CV upload paths, server-side role/approval controls, session-version checks and admin activity records.
+- Admin-approved accounts with temporary passwords, mandatory change at first login, current-password verification, admin-assisted resets and pause/reactivate.
+- Short candidate form: name, mobile, experience, preferred city/role, primary/supporting skills, optional current/expected CTC, private urgent-support flag and consent. Candidates without a CV can still apply.
+- Short job form: title, company, location, skills, private employer email, status, description and verified-source confirmation. Minimum experience is required in the main job form (enter 0 for freshers); salary and closing date are collapsed optional fields. Existing advanced settings are preserved on edit.
+- Claude résumé analysis through a protected Edge Function: primary/supporting skills, suitable titles, experience and a short summary, with explicit consent and editable review before saving. Native PDF support can read legible scanned pages; DOCX uses extracted text. Local keyword extraction remains a fallback.
+- Matching considers skills (primary skills weighted more), roles, location/work mode, experience, salary and employment type. Age and employment gaps do not reduce scores. Candidates can browse every published, unexpired job; only explicit mandatory skills gate applying.
+- Atomic, duplicate-protected applications retain submitted profile/job/CV snapshots. Later profile edits cannot alter submitted snapshots. Candidate withdrawal and admin review/status updates are supported.
+- Private CV links, RLS, column privileges, backend-only role controls, rotated session versions, reset/pause session revocation and administrative activity logs.
+- No employer account is required. Admin coordinates manually until email is enabled. Normal staff mailboxes and application email delivery are separate future work.
 
-## Supabase setup — new project
+## New Supabase installation
 
-Use a **separate new project**, not the donation-receipt application's database. These files do not connect to or modify that application.
-
-1. Create a Supabase project. Keep the database password and service-role/secret keys private.
-2. In SQL Editor, run `supabase/migrations/001_initial.sql` once. It creates tables, functions, RLS, indexes, a private `cvs` bucket and its policies. This is a new-install migration, not a rerunnable patch.
-3. Authentication settings: enable email/password sign-in, disable public user sign-ups, and set the minimum password length to at least 12. Keep email confirmation enabled: this app's admin API creates already-confirmed accounts after the admin verifies email ownership. Do not configure SMTP or invite-by-email for this initial workflow.
-4. In Authentication → Users, use **Add user / Create user** (not “Invite user”) to create your first admin with a temporary password and auto-confirm enabled. Its profile initially has candidate role and inactive state. Promote only that exact UUID with the SQL below.
+1. Use a new Supabase project, separate from any donation-receipt app.
+2. Run `supabase/migrations/001_initial.sql` once in SQL Editor.
+3. Run `supabase/migrations/002_job_fix_and_resume_ai.sql`. It is the upgrade script and is rerunnable. It adds AI-related profile columns/counters and fixes the original ambiguous job_id SQL reference.
+4. Enable email/password Auth, disable public sign-ups, and set minimum password length to 12. Do not use email invitations for the initial no-email workflow. Admin creates confirmed accounts after verifying ownership/eligibility externally.
+5. In Authentication → Users, create (not invite) the first admin account with a temporary password and auto-confirm enabled. Promote that exact UUID:
 
 ```sql
--- Replace both UUID values with the SAME first admin's actual Auth user UUID.
 update auth.users
-set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+set raw_app_meta_data=coalesce(raw_app_meta_data,'{}'::jsonb)
   || jsonb_build_object('approved',true,'access_version',gen_random_uuid()::text)
-where id = 'YOUR-ADMIN-UUID';
+where id='YOUR-ADMIN-UUID';
 
 update public.profiles p
-set role='admin', active=true, must_change_password=true,
-    full_name='Community Admin',
-    access_version=u.raw_app_meta_data->>'access_version'
-from auth.users u
-where p.id=u.id and p.id='YOUR-ADMIN-UUID';
+set role='admin',active=true,must_change_password=true,
+ full_name='Community Admin',access_version=u.raw_app_meta_data->>'access_version'
+from auth.users u where p.id=u.id and p.id='YOUR-ADMIN-UUID';
 ```
 
-5. Sign out any existing admin browser session after promotion; log in again to obtain fresh metadata. Do not clear the mandatory-password flag by hand: the app will guide the admin through setting their own password.
-6. Deploy the protected Edge Function. Using the Supabase CLI from this folder:
+6. Deploy `account-admin` and `resume-analyse` from their Edge Function folders. CLI users can run:
 
 ```sh
 supabase login
 supabase link --project-ref YOUR_PROJECT_REF
-supabase secrets set ALLOWED_ORIGIN=https://YOUR_FRONTEND_DOMAIN
 supabase functions deploy account-admin
+supabase functions deploy resume-analyse
 ```
 
-The function automatically receives `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` in Supabase hosting. Never copy the service key into frontend files or share it in chat. `ALLOWED_ORIGIN` may be a comma-separated list, e.g. your production origin and `http://localhost:8080`. Use exact origins without trailing slashes. Although gateway `verify_jwt` is false for key compatibility, the function validates every JWT with Supabase Auth before authorising any action.
+Dashboard users: paste the complete `supabase/functions/account-admin/index.ts` into account-admin, and the complete **supabase/dashboard/resume-analyse.ts** into resume-analyse. The dashboard version of resume-analyse is self-contained; the modular index.ts alone is not. Disable gateway legacy JWT verification for these functions; both functions perform their own authenticated-user and account/session checks. supabase/config.toml specifies the same setting for CLI deployment.
 
-7. Edit **config.js** with your project URL, public **anon key** (legacy public JWT key supported by the pinned SDK), and an actual coordinator phone/email for support. These two public Supabase values may appear in frontend code. An anon key is not a service-role key.
-8. Serve/upload the frontend files to a static HTTPS host. Do not expose the entire source package, tests or operational setup documents through your public site: deploy only `index.html`, `styles.css`, `app.js`, `core.js`, `demo.js`, `resume.js`, and `config.js`.
-9. Run `tests/supabase-permissions.sql` in SQL Editor. It uses rollback-only fixtures to check candidate isolation, admin visibility, protected columns, applications and token/password restrictions. Then complete the live checklist below before onboarding real candidates.
+7. In Supabase Secrets, set `ANTHROPIC_API_KEY` and `ALLOWED_ORIGIN` (e.g. https://YOUR_USERNAME.github.io, no repository path or trailing slash). The optional `ANTHROPIC_MODEL` defaults to claude-haiku-4-5-20251001. Multiple allowed origins may be comma-separated. Supabase supplies SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY inside hosted functions. Never put private keys in GitHub or frontend code.
+8. Copy config.example.js to config.js and enter your Supabase URL, public legacy anon key and coordinator contact. The pinned SDK supports that public key; never use a service-role/secret key here.
+9. Deploy only `index.html`, `styles.css`, `app.js`, `core.js`, `demo.js`, `resume.js` and your configured `config.js` to your public site. Source SQL, tests and backend setup files do not need to be published with the frontend.
+10. Run the rollback SQL checks and complete live checks below before onboarding real candidates.
 
-## First real candidate
+After promotion, log out and sign in fresh. The first admin and every new candidate must change the temporary password, then sign in with the new password. Admins can create candidates through the app once ready. Creating the account counts as community approval.
 
-1. Admin signs in and changes their temporary password.
-2. Open Candidates → Create candidate.
-3. Confirm community eligibility, consent and email ownership outside the portal.
-4. Set a temporary password of 12–128 characters; share it privately with the candidate. The app does not retain or email the plaintext password.
-5. Candidate signs in, changes the temporary password, then signs in with their new password before accessing jobs/profiles.
-6. Candidate builds their profile, optionally reads a CV and confirms skills/contact details. Upload and extraction are separate: a readable CV is helpful but not required to save a manual profile.
-7. Admin publishes a verified opening. Candidate reviews it, agrees to share details and applies.
-8. Admin reviews the stored application and handles employer coordination manually until email is added.
+## Security and data
 
-## Security model
-
-- `profiles.role`, approval/activity flags, password state and session version cannot be updated by browser database calls. Profile read is limited to the owner and authorised admins.
-- Public sign-up must be disabled; unsolicited Auth users would in any case receive inactive profiles.
-- Employer email/source records are in an admin-only table; they are not embedded in candidate-visible jobs or application snapshots.
-- Applications are inserted by a security-definer RPC, which rechecks profile readiness, consent, contact details, required skills and closing date. Duplicate protection is a database unique constraint.
-- A submitted application keeps the exact CV path/profile snapshot used at submission. Later profile changes do not replace them. Referenced CVs cannot be deleted through candidate storage permissions; replacement uploads use a new UUID path.
-- Signed CV links expire after 60 seconds. Downloaded copies cannot be recalled. Admins must handle CVs and contact details responsibly.
-- Resets rotate session versions and remove the candidate's existing refresh sessions. Pausing/re-enabling does the same. Old JWTs fail protected RLS checks. If a multi-step reset fails, the account stays restricted; repeat the reset with a different temporary password.
-- `admin_activity` records account, job and status changes without storing passwords. Failed attempts rely on platform auth logs.
-- Account deletion is an assisted operation in this release. Verify identity, preserve only records required by your organisation's retention policy, remove CV objects using trusted administration, then remove the Auth user. Profile/application rows cascade; copied/downloaded data cannot be recalled. Never delete another candidate's account based only on an unverified email.
+- Browser calls cannot edit role, active/approval/password/session flags. Candidate data is visible only to its owner and authorised admins. Employer contacts are stored in an admin-only table.
+- Application creation checks consent, mobile, required skills, role and job state on the server, and uses a unique candidate/job constraint. Storage uploads use immutable UUID paths, and submitted CV references cannot be deleted through candidate permissions.
+- Reset/pause actions rotate session metadata and revoke old refresh sessions. A partially failed reset stays restricted; repeat the reset with a different temporary password after resolving the error.
+- CVs are private, at most 2 MB. Signed download links expire after 60 seconds; downloaded copies cannot be recalled.
+- AI consent is explicit and separate. PDF files are sent to Anthropic, including any personal data in them. DOCX email/phone text is reduced before transmission, not fully anonymised. Confirm applicable provider terms and your retention policy. No CV contents or model responses are logged by the function.
+- AI attempts are capped at 3 per account/day and 100 community-wide/day (India calendar days). Failed upstream attempts count too. Scan counters store only account/date/count, and remain until maintenance or account deletion. The 90-second provider timeout and validated request/output limits restrict usage.
+- Candidate account deletion is assisted in v1. Verify identity, apply your retention policy, remove private CV objects with trusted administration and remove the Auth user. Profile/application rows cascade. Downloaded/shared data cannot be recalled.
 
 ## Dependencies and limitations
 
-- Supabase JS 2.49.8 (dynamic CDN import for live mode), PDF.js 4.10.38, Mammoth 1.9.0. Fonts load from Google Fonts, with system fallbacks. Network access to the appropriate CDNs and your Supabase project is needed; CV readers load only on demand. These pinned versions must be reviewed/updated periodically.
-- The free-first parser extracts readable text, known skills and phone/email suggestions. It does **not** provide AI employment-history/education understanding, multilingual skill translation, scanned-document OCR or malware scanning. English skill names currently match best; explain/help candidates enter skills manually.
-- Browser extraction may fail on scanned, password-protected or unusual PDFs. Upload rejects files beyond 2 MB, and PDF extraction rejects over 30 pages. Never render extracted DOCX HTML; only raw text is processed. A private upload does not imply a malware-free file.
-- Candidate interface and main admin labels support Hindi. Employer/job content and extracted skill names retain their source language. Some provider errors and operational admin messages remain English.
-- “Email confirmed” means the admin verified ownership externally; it is not proof of a delivered confirmation email. Changing login email requires trusted administrative assistance in v1.
-- Rule-based scores are helpful rankings, not hiring decisions. Age and employment gaps are not scoring inputs. Experience ranges are preferences; mandatory skills are eligibility gates. Candidates can browse every currently published opening.
-- Matching incorporates work-mode and employment-type preferences within the location and role weights. Availability and education do not yet gate matching; only mandatory skills gate applications.
-- Lists currently load all accessible records. For the intended 100–500 person pilot this keeps the app simple; add server-side pagination before large application volumes.
-- Email, provider login, export, saved jobs, push/SMS/WhatsApp notifications, self-registration and automatic account deletion are not included. Password recovery is admin-assisted. Email alert preferences do not schedule anything yet.
-- Free-tier capacity depends on CV sizes/downloads, not just candidate count. 500 files at the full 2 MB cap approximately fill 1 GB; application CV versions add storage. Encourage smaller files, monitor usage, and establish a retention/backup process. Free projects can pause when inactive; arrange a paid plan/backups when reliability requires it.
-- No Supabase project credentials were supplied during creation. SQL, live authentication, storage policies and Edge Functions still need execution/verification in your own project before production use.
+- Supabase JS 2.49.8, PDF.js 4.10.38, Mammoth 1.9.0 load from CDNs; fonts load from Google Fonts with local fallbacks. Production requires access to the CDNs and your Supabase project. Review pinned dependency/model versions periodically.
+- Claude uses Anthropic Messages API with schema-constrained JSON, bounded server validation and no model tools. The default API model can be changed using a secret; availability depends on your Anthropic account. AI costs consume your Console credits. No live paid request was made during development.
+- Local text extraction rejects unreadable scans; Claude native PDF analysis can handle legible scans after consent. Encrypted, corrupted or poor-quality documents may still fail. PDF page counting (30-page limit) is browser-side; server bounds the file to 2 MB. DOCX text sent to AI is limited to 40,000 characters. No malware scanner is provided.
+- AI is a suggestion service, may miss or misclassify details, and never directly saves a profile. Candidates must review and click Use these suggestions, then Save profile. An uncertain experience total stays blank; otherwise it is rounded to half-years and editable.
+- Manual inputs use comma-separated skill names. English normalised names currently match best; Hindi UI/job descriptions remain supported. Some provider/admin errors remain English.
+- New jobs default to Office/Full-time, category=title, source=company and no hard skill gates. Existing hidden preferences/settings are preserved; advanced settings can be managed through trusted administration if needed. Current city is derived from the first preferred city only when no existing city is stored.
+- Email alerts, email password recovery, self-registration, employer dashboards, exports, push/SMS/WhatsApp notifications and automatic deletion are not included. Stored legacy alert preferences are preserved but do not schedule messages. Applications remain in the portal for admin review.
+- Lists load all accessible records for the intended 100–500-person pilot. Add server pagination before larger volumes. Free-tier capacity depends on file sizes/versions/downloads; 500 CVs at the 2 MB cap approximately fill 1 GB before versions. Monitor usage, establish backups and a retention process; free projects may pause when inactive.
 
-## Validation
+## Validation and live checks
 
 ```sh
 npm test
@@ -112,25 +95,29 @@ node --check core.js
 node --check resume.js
 ```
 
-Automated tests cover parsing, matching (including work mode/type), eligibility, closing dates, escaping, forms and validation, demo screen rendering, filters, bilingual navigation, password screen and immutable snapshots. All 24 automated checks passed during creation. They use a small DOM stub, not a real browser. A browser binary and live Supabase project were unavailable, so visual/end-to-end browser testing and backend integration execution remain pending.
+45 automated checks passed, including auth/session/consent/quota failures, provider refusal/truncated output, payload limits, candidate review before save, primary-skill weighting, short-form persistence, and original matching/UI checks. Provider responses and DOM are mocked. A live Supabase project, paid Anthropic request and real-browser end-to-end validation were unavailable in this workspace; these still require your deployment.
 
-Live acceptance checklist:
+Run tests/supabase-permissions.sql and tests/upgrade-permissions.sql in SQL Editor after both migrations. Both are rollback-only fixtures. Verify:
 
-- [ ] Migration runs cleanly on a new project; rollback permission checks pass.
-- [ ] Bootstrap admin can log in, set own password and create/reset/pause candidates.
-- [ ] Temporary-password candidates cannot read jobs, upload files or apply through direct API requests.
-- [ ] Candidate A cannot read Candidate B's profile, CV or application; candidate cannot read employer contacts.
-- [ ] Previous access/refresh sessions fail after reset/pause. Password changes verify the current password.
-- [ ] Text PDF and DOCX extraction work; scanned/oversized/incorrect files show useful feedback; manual entry still works.
-- [ ] Upload a CV, apply, upload a replacement: application still opens the original CV.
-- [ ] Expired/draft/closed jobs cannot receive applications; duplicate submissions produce one record.
-- [ ] Candidate withdrawal cannot be reversed by the admin status form.
-- [ ] Applicant review shows the submitted phone/profile/CV and status changes reach the candidate portal.
-- [ ] Hindi and English flows, keyboard navigation, focus, phone layout, downloads and CDN loading work in real browsers.
-- [ ] Email remains visibly disabled; no notification is falsely marked sent.
+- Draft, Published and Closed job saves; edit contact without duplicates; new job visible after filters clear.
+- Admin bootstrap, candidate creation/reset/pause, mandatory-password change and invalidation of old sessions.
+- Candidate A cannot access B's profile/CV/application or private employer contacts; temporary/paused accounts cannot scan/apply.
+- Real PDF, scanned PDF and DOCX analysis; no-consent block; missing/wrong key/provider credit failure; 3/day quota.
+- Review/cancel before saving; changed-file rejection; preserved old preferences; submitted application snapshots unaffected.
+- Oversized/malformed files, no-CV manual entry, keyboard navigation, English/Hindi, mobile layout and CDN loading.
+- No email marked sent; all delivery notices remain accurate.
 
 ## Change history
 
+### 1.1.1 — 22 October 2026
+
+Fixed all popup cross buttons by giving them an explicit button type and dispatching close actions before submit-button filtering. Minimum job experience is now visible and required, with explicit zero allowed for freshers and blank/non-finite/out-of-range values rejected. Existing records and backend schema are unchanged. Deploy app.js and core.js together; no SQL or Edge Function redeployment is required. 45 mocked automated checks pass, including actual delegated close-click handling and required-experience validation.
+
+
+### 1.1.0 — 22 October 2026
+
+Fixed the original save_job job_id ambiguity through qualified parameter references and a named conflict constraint. Added a rerunnable upgrade migration; Claude résumé analysis with server secrets, native PDF support, explicit consent, quotas, validated output and confirmation; separate primary/supporting skills and matching weights; short forms that preserve legacy data; reliable visibility after job save; compact mobile header; dashboard function bundle and upgrade guide. Config.js is deliberately excluded from this update archive so existing deployments keep their configuration.
+
 ### 1.0.0 — 21 October 2026
 
-Initial implementation: English/Hindi frontend, self-contained demo, Supabase migration, protected account Edge Function, private CV storage, rule-based matching, applications/admin review, account controls, automated checks and deployment guide. Email deliberately disabled per agreed first-release workflow.
+Initial bilingual portal, Supabase schema, protected account function, private CVs, basic text/keyword extraction, matching, applications/admin review and demo. Email disabled per agreed first-release workflow.
